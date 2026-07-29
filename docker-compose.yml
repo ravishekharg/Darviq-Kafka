@@ -1,0 +1,67 @@
+name: kafka-spark-pipeline
+
+# Single-broker Kafka in KRaft mode (no Zookeeper) plus a browser UI for
+# poking at topics while developing. This is a local reference stack, not
+# a production topology -- see the README's "Production considerations"
+# section for what a real deployment needs instead (multiple brokers,
+# replication, ACLs, TLS, etc).
+services:
+  kafka:
+    image: apache/kafka:3.7.1
+    container_name: kafka-spark-pipeline-broker
+    ports:
+      # 9092 is broker-internal (container network only, used by Spark
+      # when Spark itself runs inside this compose network).
+      # 29092 is what host processes (the producer/Spark job running
+      # directly on your machine, outside Docker) connect to.
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # A fixed, pre-generated cluster ID (any valid base64 UUID) so the
+      # container's KRaft metadata log formats deterministically on first
+      # boot -- required by this image when process.roles is set.
+      CLUSTER_ID: "MTIzNDU2Nzg5MGFiY2RlZg"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Demo convenience only: a real cluster disables this and creates
+      # topics explicitly (see scripts/create_topics.py) so partition
+      # count/replication is deliberate, not whatever a typo'd topic name
+      # happens to default to.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-spark-pipeline-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+
+volumes:
+  kafka-data:

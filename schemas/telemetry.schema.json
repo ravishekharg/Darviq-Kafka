@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/telemetry.schema.json",
+  "title": "IoTTelemetryEvent",
+  "description": "A single telemetry reading emitted by an IoT device onto the raw.iot-telemetry Kafka topic.",
+  "type": "object",
+  "required": ["device_id", "timestamp", "metric_type", "value"],
+  "additionalProperties": false,
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "pattern": "^dev-[0-9a-fA-F]{8}$",
+      "description": "Stable device identifier, e.g. dev-0001a2b3."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event time in ISO-8601 UTC, e.g. 2026-07-29T10:15:30.123Z. This is when the reading was TAKEN on the device, not when it was produced to Kafka -- the two can differ for offline/buffered devices, which is what makes late data realistic here."
+    },
+    "metric_type": {
+      "type": "string",
+      "enum": ["temperature", "humidity", "battery", "signal_strength"]
+    },
+    "value": {
+      "type": "number",
+      "description": "Reading value. Valid range depends on metric_type; range checks are enforced downstream in Spark, not in this schema, since JSON Schema alone can't express conditional numeric ranges cleanly across four different units."
+    },
+    "site_id": {
+      "type": "string",
+      "description": "Optional logical grouping (e.g. cell tower / gateway site) a device is attached to."
+    },
+    "firmware_version": {
+      "type": "string",
+      "description": "Optional device firmware version string."
+    }
+  }
+}

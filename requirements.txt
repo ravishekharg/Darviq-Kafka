@@ -1,0 +1,9 @@
+pyspark==3.5.1
+# kafka-python-ng: a maintained drop-in fork of the (effectively
+# unmaintained) kafka-python package -- same `kafka` import namespace and
+# API, but it actually works on Python 3.12+ (upstream kafka-python 2.0.2
+# breaks importing under 3.12 because of a six.moves vendoring issue).
+kafka-python-ng==2.2.3
+jsonschema==4.23.0
+faker==26.0.0
+python-dotenv==1.0.1
