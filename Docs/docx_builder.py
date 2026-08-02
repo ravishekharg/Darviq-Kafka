@@ -34,18 +34,36 @@ Usage sketch (see bottom of file for a runnable example):
 """
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Pt, RGBColor
+from docx.shared import Inches, Pt, RGBColor
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
+# Resolved relative to this file (not the caller's cwd) so every project's
+# own copy of docx_builder.py finds the darviq-logo.png sitting next to it
+# in that project's Docs/ folder, regardless of where the generator script
+# is invoked from.
+DEFAULT_LOGO_PATH = str(Path(__file__).resolve().parent / "darviq-logo.png")
+
 
 class DesignDoc:
-    def __init__(self, project_name: str, subtitle: str, doc_kind: str, version: str, date: str, status: str = "Draft for review"):
+    def __init__(
+        self,
+        project_name: str,
+        subtitle: str,
+        doc_kind: str,
+        version: str,
+        date: str,
+        status: str = "Version 1.0",
+        logo_path: str | None = DEFAULT_LOGO_PATH,
+    ):
         self.doc = Document()
         self._style_base()
-        self._title_page(project_name, subtitle, doc_kind, version, date, status)
+        self._title_page(project_name, subtitle, doc_kind, version, date, status, logo_path)
         self.project_name = project_name
         self.doc_kind = doc_kind
         self.version = version
@@ -58,8 +76,18 @@ class DesignDoc:
         normal.font.name = "Calibri"
         normal.font.size = Pt(11)
 
-    def _title_page(self, project_name, subtitle, doc_kind, version, date, status) -> None:
+    def add_logo(self, logo_path: str | None, width_inches: float = 1.3) -> None:
+        if not logo_path or not os.path.exists(logo_path):
+            return
+        p = self.doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run()
+        run.add_picture(logo_path, width=Inches(width_inches))
+
+    def _title_page(self, project_name, subtitle, doc_kind, version, date, status, logo_path=DEFAULT_LOGO_PATH) -> None:
         d = self.doc
+        self.add_logo(logo_path)
+
         p = d.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = p.add_run(project_name)
